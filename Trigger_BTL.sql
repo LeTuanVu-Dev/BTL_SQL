@@ -19,7 +19,7 @@ SELECT * FROM dbo.CONGVIEC
 
 --2. tạo trigger. thêm 1 công việc cho bảng công việc thì tổng số công việc của đề tài đó tăng lên
 --3. xóa giáo viên thì số lượng giáo viên của khoa sẽ giảm 
---4. xóa công việc thì số lượng công việc của đề tài sẽ giảm
+--4. xóa công việc thì số lượng công việc của đề tài sẽ giảm abc123
 --5. ngày kết thúc phải lớn hơn ngày bắt đầu đề tài
 --6. năm kết thúc nhiệm kì phải bằng năm bắt đầu + 4.
 ---7. nếu ngày kết thúc đề tài chưa kết thúc thì không được ghi kết quả vào bảng tham gia đề tài
