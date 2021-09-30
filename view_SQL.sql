@@ -1,100 +1,137 @@
 
----1: View Thông tin giáo viên
-	CREATE VIEW TTGiaovien
-	AS 
-	SELECT GV_SDT.sMaGV, sTenGV, dNgaySinh, sGioiTinh,sDiaChi, sSDT FROM dbo.GIAOVIEN ,dbo.GV_SDT
-	WHERE dbo.GIAOVIEN.sMaGV=dbo.GV_SDT.sMaGV
-	
----2: View hiện thông tin đề tài lĩnh vực công nghệ
-	CREATE VIEW TTdetaiCN
-	AS
-    SELECT *FROM dbo.DETAI
-	WHERE sMaCD LIKE 'CD02'
-	WITH CHECK OPTION
----3: View công việc của giảng viên của đề tài "Nghiên cứu yếu tố điểm kém của sinh viên"
-	CREATE VIEW cvDTNCSVien
-	AS 
-	SELECT iSTT,sTenCV,dNgayBD,dNgayKT FROM dbo.CONGVIEC
-	WHERE sMaDT LIKE 'DT02'
-	WITH CHECK OPTION 
----4: View số giảng viên viên mỗi Bộ môn
-	CREATE VIEW soGVBommon
-	AS 
-	SELECT dbo.BOMON.sMaBM, sTenBM,COUNT(dbo.GIAOVIEN.sMaGV) AS [Số lượng giảng viên]
-	FROM dbo.BOMON,dbo.GIAOVIEN
-	WHERE dbo.GIAOVIEN.sMaBM=dbo.BOMON.sMaBM 
-	GROUP BY dbo.BOMON.sMaBM,sTenBM
---- 5 : Xuất ds tên đề tài và giáo viên tham gia đề tài năm 2020
 
-  CREATE VIEW dstenDT_2019
-  AS
-   SELECT DISTINCT sTenCD,YEAR(dNgayBD) AS[Năm]
-   FROM dbo.CONGVIEC,dbo.DETAI,dbo.CHUDE
-   WHERE dbo.CONGVIEC.sMaDT=dbo.DETAI.sMaDT
-   AND dbo.CHUDE.sMaCD=dbo.DETAI.sMaCD
-   AND YEAR(dbo.CONGVIEC.dNgayBD)=2019
-   
----6:tính tổng tiền theo chủ đề 
-	CREATE VIEW tongtienCD
-	AS
-    SELECT sTenCD, SUM(fKinhPhi) AS[tổng chi phí] 
-	FROM dbo.CHUDE,dbo.DETAI
-	WHERE dbo.DETAI.sMaCD=dbo.CHUDE.sMaCD
-	GROUP BY sTenCD
-   
----7: View ds mã bộ môn , tuổi tb của GV,sắp xếp tăng dần
- CREATE VIEW Montuoitb
-AS 
-SELECT TOP 100 PERCENT
-dbo.BOMON.sMaBM,sTenBM,
-Avg(Year(Getdate())-Year(dNgaySinh)) AS TuoiTB
 
-FROM dbo.BOMON LEFT JOIN dbo.GIAOVIEN
+/*Câu D : Tạo 10 view */
 
-ON dbo.BOMON.sMaBM=dbo.GIAOVIEN.sMaBM
-
-GROUP BY dbo.BOMON.sMaBM, sTenBM
-ORDER BY TuoiTB ASC
----8: Đếm số đề tài của mỗi chủ đề
- CREATE VIEW solDT
- AS 
- SELECT dbo.CHUDE.sMaCD,sTenCD,COUNT(sMaDT) AS[Số lượng đề tài]
- FROM dbo.CHUDE,dbo.DETAI
- WHERE dbo.CHUDE.sMaCD=dbo.DETAI.sMaCD
- GROUP BY dbo.CHUDE.sMaCD,dbo.CHUDE.sTenCD
----9: Đếm số lượng giáo viên mỗi khoa
- CREATE VIEW solGV
+ -- Câu 1 : Tạo view Thông tin và thông tin liên lạc giáo viên
+ --          và giáo viên đó đang ở khoa nào
+ CREATE VIEW view_TTgiaovien
  AS
- SELECT BOMON.sMaKH,sTenKH,COUNT(sMaGV) AS [Tổng giáo viên]
- FROM dbo.KHOA,dbo.BOMON,dbo.GIAOVIEN
- WHERE dbo.GIAOVIEN.sMaBM=dbo.BOMON.sMaBM
- AND dbo.KHOA.sMaKH=dbo.BOMON.sMaKH
- GROUP BY BOMON.sMaKH,sTenKH
----10: Tổng lương tb của mỗi khoa
-CREATE  VIEW luongTBK
-AS
-SELECT BOMON.sMaKH,sTenKH,AVG(fLuong) AS [Lương trung bình]
-FROM dbo.KHOA,dbo.BOMON,dbo.GIAOVIEN
- WHERE dbo.GIAOVIEN.sMaBM=dbo.BOMON.sMaBM
- AND dbo.KHOA.sMaKH=dbo.BOMON.sMaKH
- GROUP BY BOMON.sMaKH,sTenKH
- ---11Tăng lương cho giảng viên trưởng bộ môn
- CREATE VIEW luongTBM
+ SELECT sTenGV,sGioiTinh,dNgaySinh,fLuong,GV_SDT.sSDT,sTenKH FROM dbo.GIAOVIEN , dbo.GV_SDT,dbo.KHOA,dbo.BOMON
+ WHERE GIAOVIEN.sMaGV = GV_SDT.sMaGV
+ AND GIAOVIEN.sMaBM = BOMON.sMaBM
+ AND BOMON.sMaKH = KHOA.sMaKH
+ GO
+ 
+ SELECT * FROM view_TTgiaovien
+ GO
+ -- Câu 2 : Tạo view tổng lương của mỗi khoa
+ CREATE VIEW view_TongtienLuongKhoa
+ as
+ SELECT KHOA.sTenKH,SUM(fLuong) AS [Tổng tiền lương] FROM dbo.KHOA , dbo.view_TTgiaovien
+ WHERE KHOA.sTenKH = view_TTgiaovien.sTenKH
+ GROUP BY KHOA.sTenKH
+ GO
+ 
+ SELECT * FROM dbo.view_TongtienLuongKhoa
+ GO
+ 
+ -- Câu 3: Tạo view  tên đề tài đã thực hiện và công việc các giáo viên tham gia có kết quả đạt
+ CREATE VIEW view_DTketQuaDat
+ as
+ SELECT sTenDT,GIAOVIEN.sMaGV,sTenGV,THAMGIADETAI.iSTT AS [Thứ tự công việc],sTenCV,sKetQua FROM dbo.DETAI 
+ JOIN dbo.CONGVIEC
+ ON CONGVIEC.sMaDT = DETAI.sMaDT
+ JOIN dbo.THAMGIADETAI
+ ON THAMGIADETAI.sMaDT = CONGVIEC.sMaDT AND THAMGIADETAI.iSTT = CONGVIEC.iSTT
+ JOIN dbo.GIAOVIEN
+ ON GIAOVIEN.sMaGV = THAMGIADETAI.sMaGV
+ WHERE sKetQua = N'Đạt'
+ GO
+
+ SELECT * FROM dbo.view_DTketQuaDat
+ GO
+ 
+
+ -- Câu 4: Tạo view biết thông tin giáo viên chưa tham gia đề tài nào
+ CREATE VIEW view_GiaovienKhongThamGiaDT
+ as
+ SELECT * FROM dbo.GIAOVIEN
+ WHERE sMaGV NOT IN (
+						SELECT sMaGV FROM dbo.view_DTketQuaDat
+						)
+ GO
+ 
+ -- Câu 5: Tạo view thông kê số lượng giáo viên và tổng lương của từng bộ môn
+ CREATE VIEW view_SoluongTongluongBM
  AS 
- SELECT BOMON.sMaBM,sTruongBM,sTenGV,(fLuong*0.1+fLuong )AS [Lương trưởng bộ môn]
- FROM dbo.GIAOVIEN,dbo.BOMON
- WHERE dbo.GIAOVIEN.sMaGV=dbo.BOMON.sTruongBM
- --- đếm công việc của từng giáo viên
- CREATE VIEW sol_CV_GV
+ SELECT sTenBM,COUNT(sMaGV) AS [Số lượng giáo viên] , SUM(fLuong) AS [Tổng lương bộ môn] 
+ FROM dbo.GIAOVIEN
+ JOIN dbo.BOMON
+ ON BOMON.sMaBM = GIAOVIEN.sMaBM
+ GROUP BY BOMON.sMaBM,sTenBM
+ GO
+
+ SELECT * FROM dbo.view_SoluongTongluongBM
+ GO
+ 
+ -- Câu 6: tạo view tên giáo viên tham gia đề tài năm 2018
+ CREATE VIEW view_yearGVthamgia_DT
  AS
- SELECT dbo.THAMGIADETAI.sMaGV,sTenGV,COUNT(iSTT) AS [Số lượng]
- FROM dbo.GIAOVIEN,dbo.THAMGIADETAI
- WHERE dbo.GIAOVIEN.sMaGV=dbo.THAMGIADETAI.sMaGV
- GROUP BY dbo.THAMGIADETAI.sMaGV,sTenGV
- --- ds thông tin của trưởng đề tài cấp trường
- CREATE VIEW TTGVCNDT
- AS 
- SELECT sTenGV,sTenDT,
+ SELECT DISTINCT sTenGV AS [Giáo viên tham gia] FROM dbo.DETAI
+ JOIN dbo.CONGVIEC
+ ON CONGVIEC.sMaDT = DETAI.sMaDT
+ JOIN dbo.THAMGIADETAI
+ ON THAMGIADETAI.sMaDT = CONGVIEC.sMaDT AND THAMGIADETAI.iSTT = CONGVIEC.iSTT
+ JOIN dbo.GIAOVIEN
+ ON GIAOVIEN.sMaGV = THAMGIADETAI.sMaGV
+ WHERE YEAR(dNgayBD) = 2018
+ GO
+ 
+ SELECT * FROM dbo.view_yearGVthamgia_DT
+ GO
+ 
+
+ -- Câu 7: tạo view họ tên giáo viên đảm nhiệm ít nhất 2 công việc trong 1 đề tài
+ CREATE VIEW view_Giaovienthamgia2congviec
+ AS
+ SELECT sTenGV,sTenDT, COUNT(CONGVIEC.iSTT) AS [Số lượng công việc đảm nhiệm] FROM dbo.GIAOVIEN
+ JOIN dbo.THAMGIADETAI
+ ON THAMGIADETAI.sMaGV = GIAOVIEN.sMaGV
+ JOIN dbo.CONGVIEC
+ ON CONGVIEC.sMaDT = THAMGIADETAI.sMaDT AND CONGVIEC.iSTT = THAMGIADETAI.iSTT
+ JOIN dbo.DETAI
+ ON DETAI.sMaDT = CONGVIEC.sMaDT
+ GROUP BY sTenGV,sTenDT
+ HAVING COUNT(CONGVIEC.iSTT) >=2
+ GO
+ 
+ SELECT * FROM dbo.view_Giaovienthamgia2congviec
+ GO
+ 
+ -- câu 8: tạo view Thống kê số lượng giáo viên của từng khoa
+ CREATE VIEW view_SoluonggiaovienKHoa
+ AS
+ SELECT sTenKH,COUNT(sMaGV) AS [Số lượng giáo viên] FROM dbo.KHOA
+ JOIN dbo.BOMON
+ ON BOMON.sMaKH = KHOA.sMaKH
+ JOIN dbo.GIAOVIEN 
+ ON GIAOVIEN.sMaBM = BOMON.sMaBM
+ GROUP BY sTenKH
+ GO
+
+ SELECT * FROM view_SoluonggiaovienKHoa
+ GO
+ 
+ -- Câu 9 : tạo view tên giáo viên chủ nhiệm đề tài cấp quản lý nhà nước
+ CREATE VIEW VIEW_Truongdetai
+ as
+ SELECT sTenGV,sTenDT
  FROM dbo.GIAOVIEN,dbo.DETAI
  WHERE dbo.GIAOVIEN.sMaGV=dbo.DETAI.sGVCNDT
- AND sCapQL = N'Trường'
+ AND sCapQL = N'Nhà nước'
+ GO
+
+ SELECT * FROM dbo.VIEW_Truongdetai
+ GO
+ 
+ -- Câu 10 : tạo view thống kê số lượng đề tài của chủ đề
+ CREATE VIEW view_SoluongdetaiChude
+ AS 
+ SELECT sTenCD,COUNT(sMaDT) AS[Số lượng đề tài]
+ FROM dbo.CHUDE,dbo.DETAI
+ WHERE dbo.CHUDE.sMaCD=dbo.DETAI.sMaCD
+ GROUP BY dbo.CHUDE.sTenCD
+ GO
+ 
+ SELECT * FROM dbo.view_SoluongdetaiChude
